@@ -1,0 +1,92 @@
+library(kernlab)
+library(tree)
+library(randomForest)
+library(fastAdaboost)
+library(caret)
+library(e1071)
+library(dplyr)
+data("spam")
+
+s <- function(x)as.numeric(cut(x, c(-Inf, unique(quantile(x, probs=seq(0, 1, .1))))))
+
+logspam <- spam %>% 
+  mutate(across(1:57, s)) 
+
+set.seed(10) 
+train <- createDataPartition(y = logspam$type, p = .75, list = FALSE)
+
+## Tree
+train_tree <- tree(type ~ ., data = logspam[train, ])
+plot(train_tree)
+text(train_tree, cex = 0.8)
+
+cv_tree <- cv.tree(train_tree)
+cv_tree
+
+prune_tree <- prune.tree(train_tree, best = cv_tree$size[which.min(cv_tree$dev)])
+
+
+## Bagging/random forest
+(train_bag <- randomForest(type ~ ., logspam[train, ], importance = TRUE, mtry = 57))
+
+(train_rf  <- randomForest(type ~ ., logspam[train, ], importance = TRUE))
+
+varImpPlot(train_bag, n.var = 10)
+varImpPlot(train_rf, n.var = 10)
+
+## Boosting
+train_boost <- train(type ~ ., 
+                     data       = logspam[train, ], 
+                     method     = "adaboost",
+                     tuneGrid   = expand.grid(method = "Adaboost.M1", nIter = c(10, 25, 50)),
+                     trControl  = trainControl(method = "cv", 
+                                               number = 5)
+)
+train_boost
+
+## Support Vector Machines 
+
+train_svm  <- tune("svm", type ~ ., 
+                   data        = logspam[train, ], 
+                   kernel      = "radial",
+                   probability = TRUE, 
+                   ranges      = list(cost = c(1:4)))
+
+summary(train_svm)
+
+train_svm$best.model
+
+plot(train_svm$best.model, logspam, telnet ~ charDollar)
+
+# Testing the models
+
+class_tree  <- predict(prune_tree,           logspam[-train, ], type = "class")
+
+class_bag   <- predict(train_bag,            logspam[-train, ])
+
+class_rf    <- predict(train_rf,             logspam[-train, ])
+
+class_boost <- predict(train_boost,          logspam[-train, ])
+
+class_svm   <- predict(train_svm$best.model, logspam[-train, ])
+
+cf <- function(obs = logspam[-train, 58], est)table(obs = obs, est = est)
+
+(conf_tree <- cf(est = class_tree))
+
+(conf_bag <- cf(est = class_bag))
+
+(conf_rf <- cf(est = class_rf))
+
+(conf_boost <- cf(est = class_boost))
+
+(conf_svm <- cf(est = class_svm))
+
+miscl <- function(x) 1 - sum(diag(x)) / sum(x)
+
+data.frame(tree  = miscl(conf_tree),
+           bag   = miscl(conf_bag),
+           rf    = miscl(conf_rf),
+           boost = miscl(conf_boost),
+           svm   = miscl(conf_svm)) %>% 
+  round(4) 
