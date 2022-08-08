@@ -15,6 +15,6 @@
 5. Boosting: for tuning the nIter hyperparameter
 6. Support Vector Machines
 7. we use the function tune("svm", . . .) to tune the cost parameter for an svm with a radial kernel (too many hyperparameters)
-8. Plot
+8. Plotting
 
-10. ![](https://github.com/la6if9/Classification-with-trees/blob/main/Rplot%20SVM.png)
+9. ![](https://github.com/la6if9/Classification-with-trees/blob/main/Rplot%20SVM.png)
