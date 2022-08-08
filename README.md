@@ -17,5 +17,4 @@
 7. we use the function tune("svm", . . .) to tune the cost parameter for an svm with a radial kernel (too many hyperparameters)
 8. Plot
 
-
 10. ![](https://github.com/la6if9/Classification-with-trees/blob/main/Rplot%20SVM.png)
